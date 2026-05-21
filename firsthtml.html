@@ -4,121 +4,968 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aman Puri portfolio</title>
+  <title>Aman Puri — Full Stack Developer</title>
+  <meta name="description" content="Aman Puri — Full Stack Developer, Web Designer & Tech Enthusiast. Interactive 3D portfolio.">
+
+  <!-- ===== External Libraries (CDN) ===== -->
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+      "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+    }
+  }
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="https://unpkg.com/lenis@1.1.14/dist/lenis.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/typed.js@2.1.0/dist/typed.umd.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/vanilla-tilt/1.8.1/vanilla-tilt.min.js"></script>
+
+  <style>
+    /* ============ DESIGN TOKENS ============ */
+    :root {
+      --bg: #0a0a18;
+      --bg-2: #12122a;
+      --surface: rgba(255, 255, 255, 0.045);
+      --border: rgba(255, 255, 255, 0.1);
+      --text: #f0f0fb;
+      --text-dim: #9b9bc4;
+      --accent: #8b5cf6;
+      --accent-2: #38bdf8;
+      --accent-3: #f472b6;
+      --radius: 18px;
+      --maxw: 1180px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html { scroll-behavior: auto; }
+    .lenis.lenis-smooth { scroll-behavior: auto !important; }
+
+    body {
+      background:
+        radial-gradient(900px circle at 80% 0%, rgba(56, 189, 248, 0.10), transparent 55%),
+        radial-gradient(900px circle at 10% 90%, rgba(244, 114, 182, 0.10), transparent 55%),
+        linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%);
+      background-attachment: fixed;
+      color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+    ::selection { background: var(--accent-3); color: #fff; }
+    ::-webkit-scrollbar { width: 9px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb {
+      background: linear-gradient(var(--accent-2), var(--accent-3));
+      border-radius: 9px;
+    }
+
+    /* ============ PRELOADER ============ */
+    #preloader {
+      position: fixed; inset: 0; z-index: 9999; background: var(--bg);
+      display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 22px;
+    }
+    .pre-name {
+      font-size: clamp(1.6rem, 5vw, 2.6rem); font-weight: 900; letter-spacing: -1px;
+      background: linear-gradient(120deg, var(--accent-2), var(--accent), var(--accent-3));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .pre-track {
+      width: min(280px, 64vw); height: 3px;
+      background: rgba(255, 255, 255, 0.08); border-radius: 9px; overflow: hidden;
+    }
+    .pre-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--accent-2), var(--accent-3)); }
+    .pre-pct { font-size: 0.85rem; color: var(--text-dim); letter-spacing: 3px; }
+
+    /* ============ FIXED 3D CANVAS ============ */
+    #bg-canvas { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+    .content { position: relative; z-index: 2; }
+
+    /* ============ PROGRESS / CURSOR ============ */
+    #progress {
+      position: fixed; top: 0; left: 0; height: 3px; width: 0%; z-index: 200;
+      background: linear-gradient(90deg, var(--accent-2), var(--accent), var(--accent-3));
+      box-shadow: 0 0 12px var(--accent);
+    }
+    #cursor-glow {
+      position: fixed; width: 420px; height: 420px; border-radius: 50%;
+      background: radial-gradient(circle, rgba(139, 92, 246, 0.16), transparent 70%);
+      transform: translate(-50%, -50%); pointer-events: none; z-index: 1;
+    }
+    #cursor-dot {
+      position: fixed; width: 8px; height: 8px; border-radius: 50%;
+      background: var(--accent-2); transform: translate(-50%, -50%);
+      pointer-events: none; z-index: 300; mix-blend-mode: difference;
+    }
+
+    /* ============ NAV ============ */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 18px 6vw;
+      backdrop-filter: blur(14px);
+      background: rgba(10, 10, 24, 0.5);
+      border-bottom: 1px solid transparent;
+      transition: border-color 0.3s, background 0.3s;
+    }
+    nav.scrolled { border-color: var(--border); background: rgba(10, 10, 24, 0.86); }
+    .logo {
+      font-weight: 800; font-size: 1.15rem; letter-spacing: 0.5px;
+      background: linear-gradient(120deg, var(--accent-2), var(--accent-3));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .nav-links { display: flex; gap: 28px; list-style: none; }
+    .nav-links a {
+      color: var(--text-dim); text-decoration: none;
+      font-size: 0.9rem; font-weight: 500; position: relative; transition: color 0.25s;
+    }
+    .nav-links a::after {
+      content: ""; position: absolute; left: 0; bottom: -5px; width: 0; height: 2px;
+      background: linear-gradient(90deg, var(--accent-2), var(--accent-3)); transition: width 0.3s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .nav-links a:hover::after { width: 100%; }
+    .nav-toggle { display: none; background: none; border: 0; color: var(--text); font-size: 1.6rem; cursor: pointer; }
+
+    /* ============ LAYOUT ============ */
+    section {
+      max-width: var(--maxw); margin: 0 auto;
+      padding: 22vh 6vw; position: relative;
+    }
+    /* alternate content to one side so 3D object sits opposite */
+    .panel { max-width: 560px; }
+    section.flip .panel { margin-left: auto; text-align: right; }
+    section.flip .panel .cta-row,
+    section.flip .panel .contact-links { justify-content: flex-end; }
+    section.flip .panel .skills-grid { direction: rtl; }
+    section.flip .panel .timeline { direction: rtl; }
+    section.flip .panel .timeline * { direction: ltr; }
+
+    .section-tag {
+      display: inline-block; font-size: 0.78rem; letter-spacing: 3px;
+      text-transform: uppercase; color: var(--accent-2);
+      margin-bottom: 12px; font-weight: 700;
+    }
+    .section-title {
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 900; margin-bottom: 26px; line-height: 1.1; letter-spacing: -1.5px;
+    }
+    .section-title .word { display: inline-block; }
+    .section-title .char { display: inline-block; will-change: transform; }
+
+    /* ============ HERO ============ */
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column; justify-content: center;
+      align-items: center; text-align: center; max-width: 900px; padding-top: 90px;
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 8px; width: fit-content;
+      padding: 7px 16px; border: 1px solid var(--border);
+      border-radius: 999px; background: var(--surface);
+      font-size: 0.82rem; color: var(--text-dim); margin-bottom: 28px;
+    }
+    .hero-badge .dot {
+      width: 8px; height: 8px; border-radius: 50%;
+      background: #34d399; box-shadow: 0 0 10px #34d399; animation: pulse 1.8s infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+    .hero h1 {
+      font-size: clamp(3rem, 9vw, 6.5rem); font-weight: 900;
+      line-height: 1; letter-spacing: -3px;
+    }
+    .hero h1 .grad {
+      background: linear-gradient(120deg, var(--accent-2) 0%, var(--accent) 45%, var(--accent-3) 100%);
+      background-size: 200% auto;
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+      animation: shimmer 5s linear infinite;
+    }
+    @keyframes shimmer { to { background-position: 200% center; } }
+    .hero .role {
+      font-size: clamp(1.1rem, 2.6vw, 1.7rem); color: var(--text-dim);
+      margin: 22px 0 16px; font-weight: 600; min-height: 1.6em;
+    }
+    .hero .role .typed-cursor { color: var(--accent-2); }
+    .hero .pitch { max-width: 580px; color: var(--text-dim); margin-bottom: 36px; }
+
+    .cta-row { display: flex; gap: 16px; flex-wrap: wrap; }
+    .btn {
+      padding: 15px 30px; border-radius: 999px;
+      font-size: 0.95rem; font-weight: 700;
+      text-decoration: none; cursor: pointer; border: 1px solid var(--border);
+      transition: box-shadow 0.3s, background 0.3s;
+      display: inline-flex; align-items: center; gap: 9px; will-change: transform;
+    }
+    .btn-primary {
+      background: linear-gradient(120deg, var(--accent), var(--accent-3));
+      color: #fff; border-color: transparent;
+      box-shadow: 0 0 40px rgba(139, 92, 246, 0.5);
+    }
+    .btn-primary:hover { box-shadow: 0 0 60px rgba(244, 114, 182, 0.6); }
+    .btn-ghost { background: var(--surface); color: var(--text); }
+    .btn-ghost:hover { background: rgba(255, 255, 255, 0.09); }
+
+    .scroll-hint {
+      margin-top: 8vh; font-size: 0.78rem; color: var(--text-dim);
+      letter-spacing: 3px; display: flex; flex-direction: column;
+      align-items: center; gap: 12px;
+    }
+    .mouse {
+      width: 24px; height: 38px; border: 2px solid var(--text-dim);
+      border-radius: 14px; display: flex; justify-content: center; padding-top: 7px;
+    }
+    .mouse i {
+      width: 4px; height: 7px; border-radius: 3px; background: var(--accent-2);
+      animation: wheel 1.6s infinite;
+    }
+    @keyframes wheel { 0% { opacity: 0; transform: translateY(-4px); } 40% { opacity: 1; } 100% { opacity: 0; transform: translateY(8px); } }
+
+    /* ============ STATS ============ */
+    .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; max-width: 100%; }
+    .stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 24px 18px;
+      text-align: center; backdrop-filter: blur(8px);
+    }
+    .stat-num {
+      font-size: 2.3rem; font-weight: 900;
+      background: linear-gradient(120deg, var(--accent-2), var(--accent-3));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .stat-label { font-size: 0.8rem; color: var(--text-dim); margin-top: 4px; }
+
+    /* ============ ABOUT ============ */
+    .about-text { font-size: 1.12rem; color: var(--text-dim); }
+    .about-text strong { color: var(--text); }
+
+    /* ============ SKILLS ============ */
+    .skills-grid { display: grid; gap: 16px; }
+    .skill-head {
+      display: flex; justify-content: space-between; margin-bottom: 7px;
+      font-weight: 700; font-size: 0.92rem;
+    }
+    .skill-head span:last-child { color: var(--accent-2); }
+    .skill-bar { height: 8px; background: rgba(255, 255, 255, 0.07); border-radius: 999px; overflow: hidden; }
+    .skill-fill {
+      height: 100%; width: 0; border-radius: 999px;
+      background: linear-gradient(90deg, var(--accent-2), var(--accent), var(--accent-3));
+    }
+
+    /* ============ CARDS / PROJECTS ============ */
+    .projects-grid { display: grid; gap: 18px; }
+
+    /* ============ PROCESS STEPS ============ */
+    .steps { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .steps .step { text-align: left; }
+    .step-no {
+      display: block; font-size: 2.1rem; font-weight: 900; margin-bottom: 4px;
+      background: linear-gradient(120deg, var(--accent-2), var(--accent-3));
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .step h3 { font-size: 1.08rem; margin-bottom: 5px; }
+    .step p { color: var(--text-dim); font-size: 0.9rem; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 26px;
+      backdrop-filter: blur(8px);
+      transition: border-color 0.3s, box-shadow 0.3s;
+    }
+    .card:hover { border-color: rgba(139, 92, 246, 0.55); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.55); }
+    .js-tilt-glare { border-radius: var(--radius); }
+    .project-icon {
+      font-size: 1.7rem; width: 52px; height: 52px;
+      display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(56, 189, 248, 0.2));
+      border-radius: 13px; margin-bottom: 14px; transform: translateZ(40px);
+    }
+    .project-card h3 { font-size: 1.2rem; margin-bottom: 7px; transform: translateZ(28px); }
+    .project-card p { color: var(--text-dim); font-size: 0.93rem; margin-bottom: 14px; transform: translateZ(18px); }
+    .tags { display: flex; flex-wrap: wrap; gap: 7px; transform: translateZ(12px); }
+    .tag {
+      font-size: 0.72rem; padding: 5px 11px; border-radius: 999px;
+      background: rgba(56, 189, 248, 0.1);
+      border: 1px solid rgba(56, 189, 248, 0.28); color: var(--accent-2);
+    }
+
+    /* ============ TIMELINE ============ */
+    .timeline { position: relative; padding-left: 32px; }
+    .timeline::before {
+      content: ""; position: absolute; left: 7px; top: 6px; bottom: 6px;
+      width: 2px; background: linear-gradient(var(--accent-2), var(--accent), var(--accent-3));
+    }
+    .tl-item { position: relative; margin-bottom: 28px; }
+    .tl-item:last-child { margin-bottom: 0; }
+    .tl-item::before {
+      content: ""; position: absolute; left: -32px; top: 4px;
+      width: 16px; height: 16px; border-radius: 50%;
+      background: var(--bg); border: 3px solid var(--accent);
+      box-shadow: 0 0 14px rgba(139, 92, 246, 0.7);
+    }
+    .tl-date { font-size: 0.78rem; color: var(--accent-2); font-weight: 700; }
+    .tl-item h3 { font-size: 1.1rem; margin: 4px 0 2px; }
+    .tl-item .org { color: var(--text-dim); font-size: 0.9rem; }
+
+    /* ============ CONTACT ============ */
+    .contact-links { display: flex; gap: 12px; flex-wrap: wrap; }
+    .contact-chip {
+      display: inline-flex; align-items: center; gap: 9px;
+      padding: 12px 19px; border: 1px solid var(--border);
+      border-radius: 999px; background: rgba(255, 255, 255, 0.03);
+      color: var(--text); text-decoration: none; font-size: 0.88rem;
+      transition: border-color 0.3s; will-change: transform;
+    }
+    .contact-chip:hover { border-color: var(--accent-2); }
+
+    footer {
+      text-align: center; padding: 50px 6vw 70px;
+      color: var(--text-dim); font-size: 0.85rem; position: relative; z-index: 2;
+    }
+
+    /* ============ RESPONSIVE ============ */
+    @media (max-width: 860px) {
+      #cursor-glow, #cursor-dot { display: none; }
+      .nav-links {
+        position: fixed; inset: 64px 0 auto 0; flex-direction: column;
+        background: rgba(10, 10, 24, 0.98); padding: 24px 6vw; gap: 20px;
+        border-bottom: 1px solid var(--border);
+        transform: translateY(-140%); transition: transform 0.35s;
+      }
+      .nav-links.open { transform: translateY(0); }
+      .nav-toggle { display: block; }
+      section { padding: 16vh 6vw; }
+      .panel, section.flip .panel { max-width: 100%; margin: 0; text-align: left; }
+      section.flip .panel .cta-row,
+      section.flip .panel .contact-links { justify-content: flex-start; }
+      section.flip .panel .skills-grid,
+      section.flip .panel .timeline { direction: ltr; }
+      .stats { grid-template-columns: repeat(2, 1fr); }
+      .steps { grid-template-columns: 1fr; }
+    }
+  </style>
 </head>
 
 <body>
+  <!-- ============ PRELOADER ============ -->
+  <div id="preloader">
+    <div class="pre-name">&lt;Aman Puri /&gt;</div>
+    <div class="pre-track"><div class="pre-fill"></div></div>
+    <div class="pre-pct">0%</div>
+  </div>
 
-  <h1>Aman Puri</h1>
-  <p>Full Stack Developer | Web Designer | Tech Enthusiast</p>
+  <canvas id="bg-canvas"></canvas>
+  <div id="cursor-glow"></div>
+  <div id="cursor-dot"></div>
+  <div id="progress"></div>
 
-  <hr>
+  <!-- ============ NAV ============ -->
+  <nav id="nav">
+    <div class="logo">&lt;Aman Puri /&gt;</div>
+    <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
+    <ul class="nav-links" id="navLinks">
+      <li><a href="#about">About</a></li>
+      <li><a href="#skills">Skills</a></li>
+      <li><a href="#projects">Projects</a></li>
+      <li><a href="#process">How I Work</a></li>
+      <li><a href="#education">Education</a></li>
+      <li><a href="#contact">Contact</a></li>
+    </ul>
+  </nav>
 
-  <h2>About Me</h2>
-  <p>I am a passionate developer with 5+ years of experience in building web applications. I specialize in HTML, CSS, JavaScript, and backend technologies.</p>
+  <div class="content">
 
-  <hr>
+    <!-- ============ HERO ============ -->
+    <header class="hero" id="home">
+      <div class="hero-badge anim"><span class="dot"></span> Available for new opportunities</div>
+      <h1 class="anim">Hi, I'm <span class="grad">Aman Puri</span><br>I build the web.</h1>
+      <p class="role anim"><span id="typed"></span></p>
+      <p class="pitch anim">
+        I make websites and web apps that look good and are easy to use.
+        For 5+ years I've been turning simple ideas into real, working products.
+      </p>
+      <div class="cta-row anim">
+        <a href="#projects" class="btn btn-primary magnetic">View My Work →</a>
+        <a href="#contact" class="btn btn-ghost magnetic">Get in Touch</a>
+      </div>
+      <div class="scroll-hint anim"><span class="mouse"><i></i></span> SCROLL TO EXPLORE</div>
+    </header>
 
-  <h2>Skills</h2>
-  <ul>
-    <li>HTML5 & CSS3</li>
-    <li>JavaScript</li>
-    <li>React & Vue.js</li>
-    <li>Node.js & Express</li>
-    <li>MongoDB & MySQL</li>
-    <li>Git & GitHub</li>
-  </ul>
+    <!-- ============ ABOUT ============ -->
+    <section id="about" data-3d="0">
+      <div class="panel">
+        <span class="section-tag fade-up">01 — About</span>
+        <h2 class="section-title fade-up">A little bit about me.</h2>
+        <p class="about-text fade-up">
+          I'm a web developer with <strong>over 5 years of experience</strong>. I build
+          websites using <strong>HTML, CSS, and JavaScript</strong>, and I also work on
+          the parts that run behind the scenes. I enjoy writing clean, tidy code and
+          making things that are simple and pleasant to use.
+        </p>
+      </div>
+    </section>
 
-  <hr>
+    <!-- ============ STATS ============ -->
+    <section aria-label="Stats">
+      <div class="stats">
+        <div class="stat-card fade-up"><div class="stat-num" data-count="5">0</div><div class="stat-label">Years Experience</div></div>
+        <div class="stat-card fade-up"><div class="stat-num" data-count="20" data-suffix="+">0</div><div class="stat-label">Projects Built</div></div>
+        <div class="stat-card fade-up"><div class="stat-num" data-count="3">0</div><div class="stat-label">Companies</div></div>
+        <div class="stat-card fade-up"><div class="stat-num" data-count="100" data-suffix="%">0</div><div class="stat-label">Commitment</div></div>
+      </div>
+    </section>
 
-  <h2>Experience</h2>
-  <table border="1">
-    <thead>
-      <tr>
-        <th>Position</th>
-        <th>Company</th>
-        <th>Duration</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Senior Developer</td>
-        <td>Tech Solutions Inc.</td>
-        <td>2021 - Present</td>
-      </tr>
-      </tr>       
-      <td>Web Developer</td>
-        <td>Digital Innovations</td>
-        <td>2020-2021</td>
-      </tr>
-      <tr>
-         <td>Junior Developer</td>
-        <td>StartUp Co.</td>
-        <td>2019-2020</td>
-      <tr>
+    <!-- ============ SKILLS ============ -->
+    <section id="skills" class="flip" data-3d="1">
+      <div class="panel">
+        <span class="section-tag fade-up">02 — Skills</span>
+        <h2 class="section-title fade-up">Tools I Work With</h2>
+        <div class="skills-grid">
+          <div class="skill fade-up"><div class="skill-head"><span>HTML5 &amp; CSS3</span><span>95%</span></div><div class="skill-bar"><div class="skill-fill" data-level="95"></div></div></div>
+          <div class="skill fade-up"><div class="skill-head"><span>JavaScript</span><span>90%</span></div><div class="skill-bar"><div class="skill-fill" data-level="90"></div></div></div>
+          <div class="skill fade-up"><div class="skill-head"><span>React &amp; Vue.js</span><span>88%</span></div><div class="skill-bar"><div class="skill-fill" data-level="88"></div></div></div>
+          <div class="skill fade-up"><div class="skill-head"><span>Node.js &amp; Express</span><span>85%</span></div><div class="skill-bar"><div class="skill-fill" data-level="85"></div></div></div>
+          <div class="skill fade-up"><div class="skill-head"><span>MongoDB &amp; MySQL</span><span>82%</span></div><div class="skill-bar"><div class="skill-fill" data-level="82"></div></div></div>
+          <div class="skill fade-up"><div class="skill-head"><span>Git &amp; GitHub</span><span>90%</span></div><div class="skill-bar"><div class="skill-fill" data-level="90"></div></div></div>
+        </div>
+      </div>
+    </section>
 
-    </tbody>
-  </table>
+    <!-- ============ PROJECTS ============ -->
+    <section id="projects" data-3d="2">
+      <div class="panel">
+        <span class="section-tag fade-up">03 — Projects</span>
+        <h2 class="section-title fade-up">Things I've Built</h2>
+        <div class="projects-grid">
+          <article class="card project-card tilt fade-up">
+            <div class="project-icon">🛒</div>
+            <h3>Online Shopping Website</h3>
+            <p>A shopping website where people can browse products, add them to a cart, and pay safely online.</p>
+            <div class="tags">
+              <span class="tag">React</span><span class="tag">Node.js</span><span class="tag">MongoDB</span><span class="tag">6 months</span>
+            </div>
+          </article>
+          <article class="card project-card tilt fade-up">
+            <div class="project-icon">✍️</div>
+            <h3>Blog Website</h3>
+            <p>A blogging website where users can sign up, log in, and write and manage their own posts.</p>
+            <div class="tags">
+              <span class="tag">HTML</span><span class="tag">CSS</span><span class="tag">JavaScript</span><span class="tag">Express</span><span class="tag">3 months</span>
+            </div>
+          </article>
+        </div>
+      </div>
+    </section>
 
-  <hr>
+    <!-- ============ HOW I WORK ============ -->
+    <section id="process" class="flip" data-3d="3">
+      <div class="panel">
+        <span class="section-tag fade-up">04 — How I Work</span>
+        <h2 class="section-title fade-up">My Simple 4-Step Process</h2>
+        <div class="steps">
+          <div class="step card fade-up">
+            <span class="step-no">01</span>
+            <h3>Plan</h3>
+            <p>I listen to what you need and map out a clear plan, so we both know exactly what we're building.</p>
+          </div>
+          <div class="step card fade-up">
+            <span class="step-no">02</span>
+            <h3>Design</h3>
+            <p>I sketch how the website will look, making sure it's simple and easy for people to use.</p>
+          </div>
+          <div class="step card fade-up">
+            <span class="step-no">03</span>
+            <h3>Build</h3>
+            <p>I write clean, tidy code to turn the design into a real, working website.</p>
+          </div>
+          <div class="step card fade-up">
+            <span class="step-no">04</span>
+            <h3>Launch</h3>
+            <p>I test everything, fix any bugs, and put the website online for the world to see.</p>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <h2>Projects</h2>
-  <h3>Project 1: E-Commerce Website</h3>
-  <p>Built a fully functional e-commerce platform with product listings, cart management, and payment integration.</p>
-  <ul>
-    <li>Technologies: React, Node.js, MongoDB</li>
-    <li>Timeline: 6 months</li>
-  </ul>
+    <!-- ============ EDUCATION ============ -->
+    <section id="education" data-3d="4">
+      <div class="panel">
+        <span class="section-tag fade-up">05 — Education</span>
+        <h2 class="section-title fade-up">What I've Studied</h2>
+        <div class="timeline">
+          <div class="tl-item fade-up">
+            <div class="tl-date">2023</div>
+            <h3>Bachelor of Technology</h3>
+            <div class="org">GRD Institute of Technology</div>
+          </div>
+          <div class="tl-item fade-up">
+            <div class="tl-date">2020</div>
+            <h3>Polytechnic Diploma</h3>
+            <div class="org">GRD Institute of Technology</div>
+          </div>
+          <div class="tl-item fade-up">
+            <div class="tl-date">2017</div>
+            <h3>Web Development Bootcamp</h3>
+            <div class="org">Online Academy</div>
+          </div>
+        </div>
+      </div>
+    </section>
 
-  <h3>Project 2: Blog Platform</h3>
-  <p>Developed a blogging platform with user authentication and content management features.</p>
-  <ul>
-    <li>Technologies: HTML, CSS, JavaScript, Express</li>
-    <li>Timeline: 3 months</li>
-  </ul>
+    <!-- ============ CONTACT ============ -->
+    <section id="contact" class="flip" data-3d="5">
+      <div class="panel">
+        <span class="section-tag fade-up">06 — Contact</span>
+        <h2 class="section-title fade-up">Let's work together.</h2>
+        <p class="about-text fade-up" style="margin-bottom:24px">
+          I'm looking for a job and happy to take on freelance work too.
+          Feel free to reach out — I'd love to hear from you!
+        </p>
+        <div class="contact-links fade-up">
+          <a class="contact-chip magnetic" href="mailto:amanpuri931@gmail.com">📧 amanpuri931@gmail.com</a>
+          <a class="contact-chip magnetic" href="tel:+917895467704">📱 +91 78954 67704</a>
+          <span class="contact-chip magnetic">📍 Dehradun, Uttarakhand, India</span>
+        </div>
+      </div>
+    </section>
 
-  <hr>
+    <footer>© 2026 Aman Puri. Built with Three.js, GSAP &amp; Lenis. All rights reserved.</footer>
+  </div>
 
-  <h2>Education</h2>
-  <table border="1">
-    <thead>
-      <tr>
-        <th>Degree</th>
-        <th>Institution</th>
-        <th>Year</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>Web Development Bootcamp</td>
-        <td>Online Academy</td>
-        <td>2017</td>
-      </tr>
-      <tr>
-        <td>Polytechnic</td>
-        <td>GRD institute of technology</td>
-        <td>2020</td>
-      </tr>
-      <tr>
-        <td>Bachelor of technology</td>
-        <td>GRD institute of technology</td>
-        <td>2023</td>
-      </tr>
+  <!-- ============ THREE.JS : scroll-based 3D scene ============ -->
+  <script type="module">
+    import * as THREE from 'three';
+    import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+    import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+    import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
 
-    </tbody>
-  </table>
+    const canvas = document.getElementById('bg-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    renderer.setSize(window.innerWidth, window.innerHeight);
 
-  <hr>
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(42, window.innerWidth / window.innerHeight, 0.1, 100);
+    camera.position.z = 6;
 
-  <h2>Contact</h2>
-  <p><strong>Email:</strong> amanpuri931@gmail.com</p>
-  <p><strong>Phone:</strong>7895467704</p>
-  <p><strong>Location:</strong>Dehradun,Uttrakhand,India</p>
+    // ===== Custom WebGL : raw GLSL fragment-shader background =====
+    scene.add(camera);
+    const bgUniforms = {
+      uTime:  { value: 0 },
+      uMouse: { value: new THREE.Vector2(0.5, 0.5) },
+    };
+    const bgPlane = new THREE.Mesh(
+      new THREE.PlaneGeometry(2, 2),
+      new THREE.ShaderMaterial({
+        uniforms: bgUniforms,
+        depthWrite: false,
+        depthTest: false,
+        vertexShader: `
+          varying vec2 vUv;
+          void main() {
+            vUv = uv;
+            gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+          }
+        `,
+        fragmentShader: `
+          precision highp float;
+          varying vec2 vUv;
+          uniform float uTime;
+          uniform vec2  uMouse;
+          void main() {
+            vec2 uv = vUv;
+            float t = uTime * 0.16;
+            // layered plasma waves
+            float v = 0.0;
+            v += sin(uv.x * 6.0 + t);
+            v += sin(uv.y * 5.0 - t * 1.2);
+            v += sin((uv.x + uv.y) * 4.0 + t * 0.8);
+            vec2 c = (uv - 0.5) * 5.0;
+            v += sin(length(c) * 1.5 - t * 2.0);
+            v *= 0.25;
+            vec3 deep   = vec3(0.035, 0.030, 0.110);
+            vec3 purple = vec3(0.150, 0.080, 0.330);
+            vec3 col = mix(deep, purple, 0.5 + 0.5 * v);
+            // glow that follows the cursor
+            float m = distance(uv, uMouse);
+            col += vec3(0.22, 0.13, 0.48) * smoothstep(0.55, 0.0, m) * 0.6;
+            col += vec3(0.04, 0.20, 0.38) * (0.5 + 0.5 * sin(t + uv.x * 3.0)) * 0.22;
+            gl_FragColor = vec4(col, 1.0);
+          }
+        `,
+      })
+    );
+    bgPlane.renderOrder = -1;
+    bgPlane.frustumCulled = false;
+    camera.add(bgPlane);
 
-  <hr>
+    function fitBg() {
+      const dist = 12;
+      const h = 2 * dist * Math.tan((camera.fov * Math.PI / 180) / 2);
+      bgPlane.scale.set(h * camera.aspect / 2, h / 2, 1);
+      bgPlane.position.set(0, 0, -dist);
+    }
+    fitBg();
 
-  <p>&copy; 2026 Aman Puri. All rights reserved.</p>
+    // ===== Custom WebGL : GLSL shader material for the section objects =====
+    // vertex shader displaces the surface; fragment shader does iridescent
+    // normal-colouring + a fresnel rim glow — all raw GLSL.
+    const objMat = new THREE.ShaderMaterial({
+      uniforms: { uTime: { value: 0 } },
+      vertexShader: `
+        uniform float uTime;
+        varying vec3 vNormal;
+        varying vec3 vView;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vec3 p = position;
+          float d = sin(p.x * 3.0 + uTime) * cos(p.y * 3.0 + uTime * 1.3) * 0.14;
+          p += normal * d;
+          vec4 mv = modelViewMatrix * vec4(p, 1.0);
+          vView = -mv.xyz;
+          gl_Position = projectionMatrix * mv;
+        }
+      `,
+      fragmentShader: `
+        precision highp float;
+        varying vec3 vNormal;
+        varying vec3 vView;
+        uniform float uTime;
+        void main() {
+          vec3 n = normalize(vNormal);
+          vec3 col = 0.5 + 0.5 * cos(uTime * 0.3 + n.xyx * 3.14159 + vec3(0.0, 2.0, 4.0));
+          float fres = pow(1.0 - max(dot(n, normalize(vView)), 0.0), 2.5);
+          col += fres * vec3(0.45, 0.75, 1.0);
+          gl_FragColor = vec4(col, 1.0);
+        }
+      `,
+    });
 
+    // pixels -> world units at the z=0 plane
+    function worldPerPixel() {
+      const visH = 2 * camera.position.z * Math.tan((camera.fov * Math.PI / 180) / 2);
+      return visH / window.innerHeight;
+    }
+
+    // ---- Section objects: one faceted shape per section ----
+    const worldGroup = new THREE.Group();
+    scene.add(worldGroup);
+
+    const geos = [
+      new THREE.IcosahedronGeometry(1.15, 0),
+      new THREE.TorusGeometry(0.95, 0.4, 16, 60),
+      new THREE.OctahedronGeometry(1.3, 0),
+      new THREE.ConeGeometry(1.1, 1.9, 6),
+      new THREE.DodecahedronGeometry(1.2, 0),
+      new THREE.TorusKnotGeometry(0.78, 0.3, 120, 18),
+    ];
+    const sectionEls = [...document.querySelectorAll('[data-3d]')];
+    const objects = [];
+
+    sectionEls.forEach((el) => {
+      const i = +el.dataset['3d'];
+      const mesh = new THREE.Mesh(geos[i % geos.length], objMat);
+      mesh.userData.spin = (Math.random() - 0.5) * 0.4 + (i % 2 ? 0.25 : -0.25);
+      mesh.userData.scl = 0.001;
+      mesh.scale.setScalar(0.001);
+      worldGroup.add(mesh);
+      objects.push({ el, mesh });
+    });
+
+    // ---- Background particle field ----
+    const COUNT = 1700;
+    const pos = new Float32Array(COUNT * 3);
+    for (let i = 0; i < COUNT; i++) {
+      pos[i * 3]     = (Math.random() - 0.5) * 14;
+      pos[i * 3 + 1] = (Math.random() - 0.5) * 60;
+      pos[i * 3 + 2] = (Math.random() - 0.5) * 10 - 3;
+    }
+    const pGeo = new THREE.BufferGeometry();
+    pGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({
+      size: 0.035, color: 0xa78bfa, transparent: true, opacity: 0.8,
+      blending: THREE.AdditiveBlending,
+    }));
+    scene.add(particles);
+
+    // ---- Bloom post-processing ----
+    const composer = new EffectComposer(renderer);
+    composer.addPass(new RenderPass(scene, camera));
+    const bloom = new UnrealBloomPass(
+      new THREE.Vector2(window.innerWidth, window.innerHeight), 0.5, 0.5, 0.55
+    );
+    composer.addPass(bloom);
+    composer.setSize(window.innerWidth, window.innerHeight);
+
+    // ---- Layout: place each mesh beside its section ----
+    function layout() {
+      const wpp = worldPerPixel();
+      const sideX = window.innerWidth < 860
+        ? 0
+        : (window.innerWidth * 0.27) * wpp;   // sit in the empty margin
+      objects.forEach(({ el, mesh }) => {
+        const rect = el.getBoundingClientRect();
+        const docCenter = rect.top + window.scrollY + rect.height / 2;
+        // centre the object when its section is centred in the viewport
+        mesh.userData.baseY = (window.innerHeight / 2 - docCenter) * wpp;
+        const flipped = el.classList.contains('flip');
+        mesh.position.x = flipped ? -sideX : sideX;
+        mesh.position.z = window.innerWidth < 860 ? -3.2 : 0;
+      });
+    }
+
+    // ---- Scroll + mouse ----
+    let scrollY = window.scrollY;
+    let mx = 0, my = 0, tx = 0, ty = 0;
+    window.addEventListener('mousemove', (e) => {
+      tx = e.clientX / window.innerWidth - 0.5;
+      ty = e.clientY / window.innerHeight - 0.5;
+    });
+    let vel = 0;
+    window.__setScroll = (v) => { scrollY = v; };   // fed by Lenis below
+    window.__setVel = (v) => { vel = v; };
+
+    const clock = new THREE.Clock();
+    let prev = 0;
+    function animate() {
+      const t = clock.getElapsedTime();
+      const dt = t - prev; prev = t;
+      const wpp = worldPerPixel();
+
+      // feed time + cursor into the custom WebGL shaders
+      bgUniforms.uTime.value = t;
+      bgUniforms.uMouse.value.set(mx + 0.5, 0.5 - my);
+      objMat.uniforms.uTime.value = t;
+
+      // scroll the world up as the page scrolls down
+      const targetY = scrollY * wpp;
+      worldGroup.position.y += (targetY - worldGroup.position.y) * Math.min(1, dt * 6);
+
+      // mouse parallax
+      mx += (tx - mx) * 0.06;
+      my += (ty - my) * 0.06;
+      camera.position.x = mx * 0.9;
+      camera.position.y = -my * 0.9;
+      camera.lookAt(0, 0, 0);
+
+      const velAbs = Math.min(Math.abs(vel) * 0.02, 1.4);
+      objects.forEach(({ mesh }) => {
+        mesh.position.y = mesh.userData.baseY;
+        // grow as the object nears the centre of the viewport
+        const screenY = worldGroup.position.y + mesh.userData.baseY;
+        const prox = 1.0 - Math.min(Math.abs(screenY) / 3.4, 1.0);
+        const target = 0.18 + prox * prox * (1.05 + velAbs * 0.15);
+        mesh.userData.scl += (target - mesh.userData.scl) * Math.min(1, dt * 6);
+        mesh.scale.setScalar(mesh.userData.scl);
+        // spin faster (and in scroll direction) the harder you scroll
+        mesh.rotation.x += dt * (0.25 + velAbs * 0.6);
+        mesh.rotation.y += dt * mesh.userData.spin + (vel >= 0 ? velAbs : -velAbs) * dt;
+      });
+      vel *= 0.92;
+
+      particles.rotation.y = t * 0.02;
+      particles.position.y = worldGroup.position.y * 0.4;
+
+      composer.render();
+      requestAnimationFrame(animate);
+    }
+
+    function resize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      composer.setSize(window.innerWidth, window.innerHeight);
+      fitBg();
+      layout();
+    }
+    window.addEventListener('resize', resize);
+    window.addEventListener('load', layout);
+    layout();
+    animate();
+  </script>
+
+  <!-- ============ UI : Lenis + GSAP + Typed + Tilt ============ -->
+  <script>
+    /* ---------- Preloader ---------- */
+    (function () {
+      const fill = document.querySelector('.pre-fill');
+      const pct = document.querySelector('.pre-pct');
+      let p = 0;
+      const iv = setInterval(() => {
+        p += Math.random() * 18;
+        if (p >= 100) { p = 100; clearInterval(iv); finish(); }
+        fill.style.width = p + '%';
+        pct.textContent = Math.floor(p) + '%';
+      }, 120);
+      function finish() {
+        gsap.set('#preloader', { clipPath: 'inset(0% 0% 0% 0%)' });
+        const tl = gsap.timeline({ delay: 0.2 });
+        tl.to('.pre-name', { y: -24, opacity: 0, duration: 0.4, ease: 'power2.in' })
+          .to('.pre-track, .pre-pct', { opacity: 0, duration: 0.25 }, '-=0.3')
+          // curtain wipes upward to reveal the page
+          .to('#preloader', {
+            clipPath: 'inset(0% 0% 100% 0%)', duration: 0.85, ease: 'power4.inOut',
+            onComplete: () => { document.getElementById('preloader').style.display = 'none'; }
+          }, '-=0.1')
+          .from('nav', { y: -90, opacity: 0, duration: 0.6, ease: 'power3.out' }, '-=0.45')
+          // hero elements flip up into place
+          .from('.hero .anim', {
+            y: 70, opacity: 0, rotateX: -55, scale: 0.9,
+            transformOrigin: '50% 100%', transformPerspective: 800,
+            duration: 1, stagger: 0.12, ease: 'back.out(1.5)'
+          }, '-=0.35');
+      }
+    })();
+
+    /* ---------- Lenis smooth scroll (drives the 3D scene) ---------- */
+    const lenis = new Lenis({ duration: 1.15, smoothWheel: true });
+    lenis.on('scroll', (e) => {
+      ScrollTrigger.update();
+      if (window.__setScroll) window.__setScroll(e.scroll);
+      if (window.__setVel) window.__setVel(e.velocity);
+    });
+    gsap.ticker.add((time) => lenis.raf(time * 1000));
+    gsap.ticker.lagSmoothing(0);
+
+    document.querySelectorAll('a[href^="#"]').forEach(a => {
+      a.addEventListener('click', (e) => {
+        const target = document.querySelector(a.getAttribute('href'));
+        if (target) { e.preventDefault(); lenis.scrollTo(target, { offset: -10 }); }
+      });
+    });
+
+    /* ---------- GSAP ScrollTrigger reveals ---------- */
+    gsap.registerPlugin(ScrollTrigger);
+
+    /* ---------- Split section titles into animated characters ---------- */
+    function splitChars(el) {
+      const words = el.textContent.trim().split(/\s+/);
+      el.textContent = '';
+      const chars = [];
+      words.forEach((word, wi) => {
+        const wSpan = document.createElement('span');
+        wSpan.className = 'word';
+        [...word].forEach((ch) => {
+          const cSpan = document.createElement('span');
+          cSpan.className = 'char';
+          cSpan.textContent = ch;
+          wSpan.appendChild(cSpan);
+          chars.push(cSpan);
+        });
+        el.appendChild(wSpan);
+        if (wi < words.length - 1) el.appendChild(document.createTextNode(' '));
+      });
+      return chars;
+    }
+    document.querySelectorAll('.section-title').forEach((title) => {
+      const chars = splitChars(title);
+      gsap.from(chars, {
+        scrollTrigger: { trigger: title, start: 'top 86%' },
+        yPercent: 120, opacity: 0, rotateZ: 9,
+        duration: 0.7, ease: 'back.out(1.7)', stagger: 0.025
+      });
+    });
+
+    /* ---------- Generic reveal for everything else ---------- */
+    gsap.utils.toArray('.fade-up:not(.section-title)').forEach((el) => {
+      gsap.from(el, {
+        scrollTrigger: { trigger: el, start: 'top 90%' },
+        y: 52, opacity: 0, scale: 0.96, duration: 0.85, ease: 'power3.out'
+      });
+    });
+
+    /* ---------- Parallax drift on each content panel ---------- */
+    gsap.utils.toArray('.panel').forEach((p) => {
+      gsap.to(p, {
+        yPercent: -7, ease: 'none',
+        scrollTrigger: {
+          trigger: p.closest('section'),
+          start: 'top bottom', end: 'bottom top', scrub: true
+        }
+      });
+    });
+
+    /* ---------- Velocity-driven skew (sections lean as you fling) ---------- */
+    const skewSet = gsap.quickSetter('section', 'skewY', 'deg');
+    const clampSkew = gsap.utils.clamp(-5, 5);
+    const skewProxy = { v: 0 };
+    ScrollTrigger.create({
+      onUpdate: (self) => {
+        const sk = clampSkew(self.getVelocity() / -320);
+        if (Math.abs(sk) > Math.abs(skewProxy.v)) {
+          skewProxy.v = sk;
+          gsap.to(skewProxy, {
+            v: 0, duration: 0.7, ease: 'power3',
+            overwrite: true, onUpdate: () => skewSet(skewProxy.v)
+          });
+        }
+      }
+    });
+    gsap.utils.toArray('.skill-fill').forEach((bar) => {
+      gsap.to(bar, {
+        scrollTrigger: { trigger: bar, start: 'top 92%' },
+        width: bar.dataset.level + '%', duration: 1.4, ease: 'power3.out'
+      });
+    });
+    gsap.utils.toArray('.stat-num[data-count]').forEach((el) => {
+      const suffix = el.dataset.suffix || '';
+      const obj = { v: 0 };
+      gsap.to(obj, {
+        v: +el.dataset.count, duration: 1.6, ease: 'power2.out',
+        scrollTrigger: { trigger: el, start: 'top 92%' },
+        onUpdate: () => { el.textContent = Math.round(obj.v) + suffix; }
+      });
+    });
+    gsap.to('#progress', {
+      width: '100%', ease: 'none',
+      scrollTrigger: { start: 0, end: 'max', scrub: 0.3 }
+    });
+
+    /* ---------- Typed.js ---------- */
+    new Typed('#typed', {
+      strings: ['Full Stack Developer', 'Web Designer', 'Tech Enthusiast', 'Problem Solver'],
+      typeSpeed: 55, backSpeed: 30, backDelay: 1400, loop: true, smartBackspace: true
+    });
+
+    /* ---------- Vanilla-Tilt ---------- */
+    VanillaTilt.init(document.querySelectorAll('.tilt'), {
+      max: 9, speed: 600, glare: true, 'max-glare': 0.22, scale: 1.03
+    });
+
+    /* ---------- Nav ---------- */
+    const nav = document.getElementById('nav');
+    const navLinks = document.getElementById('navLinks');
+    ScrollTrigger.create({ start: 'top -30', onUpdate: (s) => nav.classList.toggle('scrolled', s.scroll() > 30) });
+    document.getElementById('navToggle').addEventListener('click', () => navLinks.classList.toggle('open'));
+    navLinks.querySelectorAll('a').forEach(a => a.addEventListener('click', () => navLinks.classList.remove('open')));
+
+    /* ---------- Cursor ---------- */
+    const glow = document.getElementById('cursor-glow');
+    const dot = document.getElementById('cursor-dot');
+    const xG = gsap.quickTo(glow, 'left', { duration: 0.6, ease: 'power3' });
+    const yG = gsap.quickTo(glow, 'top', { duration: 0.6, ease: 'power3' });
+    const xD = gsap.quickTo(dot, 'left', { duration: 0.15, ease: 'power3' });
+    const yD = gsap.quickTo(dot, 'top', { duration: 0.15, ease: 'power3' });
+    window.addEventListener('mousemove', (e) => { xG(e.clientX); yG(e.clientY); xD(e.clientX); yD(e.clientY); });
+
+    /* ---------- Magnetic buttons ---------- */
+    document.querySelectorAll('.magnetic').forEach((el) => {
+      el.addEventListener('mousemove', (e) => {
+        const r = el.getBoundingClientRect();
+        gsap.to(el, {
+          x: (e.clientX - r.left - r.width / 2) * 0.4,
+          y: (e.clientY - r.top - r.height / 2) * 0.4,
+          duration: 0.4, ease: 'power3.out'
+        });
+      });
+      el.addEventListener('mouseleave', () => {
+        gsap.to(el, { x: 0, y: 0, duration: 0.5, ease: 'elastic.out(1, 0.4)' });
+      });
+    });
+
+    /* recalc 3D layout once everything (fonts/animations) settled */
+    window.addEventListener('load', () => setTimeout(() => ScrollTrigger.refresh(), 200));
+  </script>
 </body>
 
 </html>
